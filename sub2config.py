@@ -22,7 +22,7 @@ LOC_PATTERN = re.compile(r'.*({}).*'.format('|'.join(GROUPS['ALL'])))
 
 
 def sub2proxies(subscribe, file=None):
-    proxy_template = {'name': '',
+    vmess_template = {'name': '',
                       'type': 'vmess',
                       'server': '',
                       'port': 80,
@@ -45,26 +45,29 @@ def sub2proxies(subscribe, file=None):
     if file is not None:
         with open(file, 'wb') as f:
             f.write(data)
-
+    data += b'=' * (-len(data) % 4)
     data = base64.b64decode(data).decode()
     links = data.splitlines()
     for link in links:
         node_info = urlsplit(link)
-        if node_info.scheme != 'vmess':
-            raise NotImplementedError(node_info.scheme)
-        node_info_bytes = node_info.netloc + '=' * (4 - (len(node_info.netloc) % 4))
-        node_info = json.loads(base64.b64decode(node_info_bytes).decode())
-        proxy = deepcopy(proxy_template)
-        proxy['name'] = node_info['ps']
-        proxy['server'] = node_info['add']
-        proxy['port'] = node_info['port']
-        proxy['uuid'] = node_info['id']
-        proxy['alterId'] = node_info['aid']
-        proxy['network'] = node_info['net']
-        proxy['ws-opts']['path'] = node_info['path']
-        proxy['ws-path'] = node_info['path']
-        # print(location_pattern)
-        # print(proxy['name'])
+        if node_info.scheme == 'vmess':
+            node_info_bytes = node_info.netloc + '=' * (4 - (len(node_info.netloc) % 4))
+            node_info = json.loads(base64.b64decode(node_info_bytes).decode())
+            proxy = deepcopy(vmess_template)
+            proxy['name'] = node_info['ps']
+            proxy['server'] = node_info['add']
+            proxy['port'] = node_info['port']
+            proxy['uuid'] = node_info['id']
+            proxy['alterId'] = node_info['aid']
+            proxy['network'] = node_info['net']
+            proxy['ws-opts']['path'] = node_info['path']
+            proxy['ws-path'] = node_info['path']
+        elif node_info.scheme == 'ss':
+            print('-' * 100)
+            print(node_info)
+        else:
+            print('NotImplete scheme:', node_info.scheme)
+            continue
         if LOC_PATTERN.match(proxy['name']):
             proxies.append(proxy)
     return proxies
